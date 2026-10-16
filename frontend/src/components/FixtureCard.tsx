@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
@@ -9,7 +9,8 @@ export interface Market {
   marketId: string;
   marketType: string;
   outcomeName: string;
-  rawOddsDecimal: number;
+  rawOddsDecimal: number | string;
+  raw_odds_decimal?: number | string;
   isActive: boolean;
 }
 
@@ -40,13 +41,14 @@ export function FixtureCard({ fixture }: FixtureProps) {
   const awayMarket = getMarket('AWAY');
 
   const isLive = fixture.match_status === 'LIVE';
-  const isLocal = fixture.external_provider_id.startsWith('MANUAL_LOCAL');
+  const isLocal = fixture.external_provider_id?.startsWith('MANUAL_LOCAL');
 
   const renderOddButton = (market?: Market, label?: string) => {
     if (!market) return <div className="flex-1 bg-slate-900/50 rounded-lg h-10 border border-slate-800" />;
 
     const isSelected = selections.some((s) => s.marketId === market.marketId);
     const locked = !market.isActive;
+    const oddsValue = Number(market.rawOddsDecimal ?? market.raw_odds_decimal ?? 1.0);
 
     return (
       <button
@@ -58,7 +60,7 @@ export function FixtureCard({ fixture }: FixtureProps) {
               marketId: market.marketId,
               matchTitle: `${fixture.home_team} vs ${fixture.away_team}`,
               outcomeName: market.outcomeName,
-              odds: Number(market.raw_odds_decimal),
+              odds: oddsValue,
             });
           }
         }}
@@ -72,7 +74,7 @@ export function FixtureCard({ fixture }: FixtureProps) {
         )}
       >
         <span className="text-[10px] text-slate-400 uppercase font-semibold">{label}</span>
-        {locked ? <Lock className="w-3 h-3 text-slate-500" /> : <span>{Number(market.raw_odds_decimal).toFixed(2)}</span>}
+        {locked ? <Lock className="w-3 h-3 text-slate-500" /> : <span>{oddsValue.toFixed(2)}</span>}
       </button>
     );
   };
