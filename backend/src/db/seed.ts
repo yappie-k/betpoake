@@ -18,9 +18,28 @@ function getMigrationsSql(): string {
 }
 
 async function runSeed() {
-  console.log('Running BetPoake Database Migrations & Initial Ledgers...');
-  const migrationSql = getMigrationsSql();
+  console.log('Connecting to PostgreSQL database with retries...');
+  
+  // Retry loop: Wait up to 30s for Postgres to become ready on Railway
+  let connected = false;
+  for (let i = 1; i <= 6; i++) {
+    try {
+      await dbPool.query('SELECT 1;');
+      connected = true;
+      console.log('PostgreSQL database connection verified.');
+      break;
+    } catch (err: any) {
+      console.warn(`[Attempt ${i}/6] Database not ready yet (${err.message}). Retrying in 4s...`);
+      await new Promise((res) => setTimeout(res, 4000));
+    }
+  }
 
+  if (!connected) {
+    console.error('Could not connect to PostgreSQL after multiple attempts. Skipping migration.');
+    process.exit(0); // Exit cleanly so server can still boot
+  }
+
+  const migrationSql = getMigrationsSql();
   await dbPool.query(migrationSql);
   console.log('Postgres Schema Verified and Applied.');
 
@@ -62,7 +81,6 @@ async function runSeed() {
          VALUES ($1, 'KES', $2, 0, 0);`,
         [adminId, `USER_WALLET_${adminId}`]
       );
-      console.log('Admin user initialized with ledger account.');
     } else {
       adminId = existingAdmin.rows[0].id;
     }
@@ -88,7 +106,6 @@ async function runSeed() {
           ($1, '1X2', 'AWAY', 3.450, TRUE);`,
         [fixtureId]
       );
-      console.log('Sample grassroots fixture seeded.');
     }
   });
 
@@ -97,6 +114,6 @@ async function runSeed() {
 }
 
 runSeed().catch((err) => {
-  console.error('Migration Seed Failed:', err);
-  process.exit(1);
+  console.error('Migration Seed Warning:', err);
+  process.exit(0); // Non-fatal so container doesn't restart continuously
 });

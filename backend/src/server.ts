@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+﻿import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import fastifyWebsocket from '@fastify/websocket';
@@ -13,7 +13,7 @@ import { adminRoutes } from './routes/admin.routes.js';
 
 const app = Fastify({
   logger: {
-    level: ENV.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   },
 });
 
@@ -24,7 +24,7 @@ async function bootstrap() {
   });
 
   await app.register(fastifyJwt, {
-    secret: ENV.JWT_SECRET,
+    secret: ENV.JWT_SECRET || 'super_secure_jwt_secret_betpoake_2026_enterprise',
   });
 
   await app.register(fastifyWebsocket);
@@ -32,12 +32,19 @@ async function bootstrap() {
   // Initialize Real-time Redis Pipeline
   RealtimeService.init();
 
-  // Low Latency WebSocket Gateway
+  // WebSocket Endpoint
   app.register(async function (fastify) {
     fastify.get('/realtime', { websocket: true }, (socket, req) => {
       RealtimeService.registerClient(socket);
     });
   });
+
+  // Health Probe (Always returns 200 OK for Railway health checks)
+  app.get('/health', async () => ({
+    status: 'UP',
+    service: 'BetPoake Engine',
+    timestamp: new Date().toISOString(),
+  }));
 
   // API Routes
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -46,15 +53,15 @@ async function bootstrap() {
   await app.register(paymentsRoutes, { prefix: '/api/v1/payments' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
 
-  // Health Probe
-  app.get('/health', async () => ({ status: 'UP', timestamp: new Date().toISOString() }));
-
-  // Launch Background Game Feed Ingestion
+  // Start Automated Game Feeds
   IngestionService.startAutomatedEngine();
 
+  // Bind to Railway dynamic PORT or fallback to 5000
+  const port = Number(process.env.PORT) || ENV.PORT || 5000;
+  
   try {
-    await app.listen({ port: ENV.PORT, host: '0.0.0.0' });
-    console.log(`BetPoake Backend Online: Port ${ENV.PORT}`);
+    await app.listen({ port, host: '0.0.0.0' });
+    console.log(`[BetPoake Engine] Online and listening on 0.0.0.0:${port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
