@@ -86,7 +86,6 @@ export async function adminRoutes(server: FastifyInstance) {
       [homeScore, awayScore, status, params.id]
     );
 
-    // Broadcast instant update
     await RealtimeService.broadcastOddsTick({
       fixtureId: params.id,
       marketId: 'SCORE_UPDATE',
@@ -98,7 +97,6 @@ export async function adminRoutes(server: FastifyInstance) {
       timestamp: Date.now(),
     });
 
-    // If match was toggled to COMPLETED, fire automated tax and bet settlement engine
     if (status === 'COMPLETED') {
       await SettlementService.settleCompletedFixture(params.id, homeScore, awayScore);
     }
@@ -128,5 +126,37 @@ export async function adminRoutes(server: FastifyInstance) {
     await RealtimeService.broadcastFreezeSwitch(params.id, isActive);
 
     return reply.send({ success: true, isLocked: !isActive });
+  });
+
+  // 4. KRA 5% Withholding Tax Audit Report
+  server.get('/tax-report', async (request, reply) => {
+    const query = `
+      SELECT 
+        tj.id as transaction_id,
+        tj.transaction_group_id,
+        tj.amount_micro_units / 100.0 as tax_amount_kes,
+        tj.reference_id,
+        tj.created_at,
+        b.id as bet_id,
+        b.user_id,
+        b.total_stake_micro_units / 100.0 as stake_kes,
+        b.potential_payout_micro_units / 100.0 as gross_payout_kes
+      FROM transaction_journal tj
+      JOIN bets b ON tj.reference_id LIKE '%' || b.id::text
+      WHERE tj.transaction_category = 'TAX_WITHHOLDING'
+      ORDER BY tj.created_at DESC;
+    `;
+    const res = await dbPool.query(query);
+
+    const totalTaxRes = await dbPool.query(
+      `SELECT balance_micro_units / 100.0 as total_withheld_kes 
+       FROM ledger_accounts 
+       WHERE account_identifier = 'TAX_WITHHOLDING_ACCOUNT'`
+    );
+
+    return reply.send({
+      totalTaxWithheldKes: totalTaxRes.rows[0]?.total_withheld_kes || 0,
+      records: res.rows
+    });
   });
 }

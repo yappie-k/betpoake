@@ -2,11 +2,13 @@
 
 WORKDIR /app
 
-# Install backend dependencies
+# Copy package definitions
 COPY backend/package*.json ./
-RUN npm install
 
-# Copy source code and build
+# Install ALL packages (including TypeScript) even if NODE_ENV=production
+RUN npm install --include=dev
+
+# Copy backend source code and compile
 COPY backend/ ./
 RUN npm run build
 
