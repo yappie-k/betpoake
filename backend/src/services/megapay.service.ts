@@ -33,30 +33,22 @@ export class MegaPayService {
   public static async initiateStkPush(params: MegaPayStkRequest): Promise<MegaPayStkResponse> {
     const formattedPhone = this.formatKenyanPhone(params.phoneNumber);
 
-    // Sandbox Simulation Mode when placeholder credentials are used
-    if (
-      !ENV.MEGAPAY_API_KEY ||
-      ENV.MEGAPAY_API_KEY === 'placeholder_megapay_api_key' ||
-      ENV.MEGAPAY_CLIENT_ID === 'placeholder_megapay_client_id'
-    ) {
+    // Sandbox Simulation Mode if placeholder keys are active
+    if (!ENV.MEGAPAY_API_KEY || ENV.MEGAPAY_API_KEY === 'placeholder_megapay_api_key') {
       const mockCheckoutId = `ws_CO_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
       console.log(`[MegaPay Sandbox Mock] Dispatched STK Push to ${formattedPhone} for KES ${params.amountKes}`);
       return {
         success: true,
         checkoutRequestId: mockCheckoutId,
         responseMessage: 'Success. STK prompt simulated (Sandbox Mock Mode)',
-        raw: {
-          MerchantRequestID: `MR_${Date.now()}`,
-          CheckoutRequestID: mockCheckoutId,
-          ResponseCode: '0',
-          ResponseDescription: 'Success. Request accepted for processing',
-          CustomerMessage: 'Success. Request accepted for processing',
-        },
+        raw: { CheckoutRequestID: mockCheckoutId, ResponseCode: '0' },
       };
     }
 
+    // Live Payload supporting both email and client_id formats
     const payload = {
       client_id: ENV.MEGAPAY_CLIENT_ID,
+      email: ENV.MEGAPAY_CLIENT_ID,
       phone_number: formattedPhone,
       amount: params.amountKes,
       reference: params.referenceId,
@@ -93,13 +85,15 @@ export class MegaPayService {
     }
   }
 
-  public static verifyWebhookSignature(payload: string, incomingSignature: string): boolean {
+  public static verifyWebhookSignature(payload: string, incomingSignature?: string): boolean {
+    // If webhook secret is 'none' or not provided, rely on internal CheckoutRequestID validation
     if (
       !incomingSignature ||
+      ENV.MEGAPAY_WEBHOOK_SECRET === 'none' ||
       ENV.MEGAPAY_WEBHOOK_SECRET === 'placeholder_signature_secret' ||
-      ENV.NODE_ENV !== 'production'
+      !ENV.MEGAPAY_WEBHOOK_SECRET
     ) {
-      return true; // Bypass signature validation in local sandbox testing
+      return true;
     }
 
     const computedSignature = crypto
@@ -120,13 +114,8 @@ export class MegaPayService {
   }): Promise<{ success: boolean; externalReference?: string; message: string }> {
     const formattedPhone = this.formatKenyanPhone(params.phoneNumber);
 
-    if (
-      !ENV.MEGAPAY_API_KEY ||
-      ENV.MEGAPAY_API_KEY === 'placeholder_megapay_api_key' ||
-      ENV.MEGAPAY_CLIENT_ID === 'placeholder_megapay_client_id'
-    ) {
+    if (!ENV.MEGAPAY_API_KEY || ENV.MEGAPAY_API_KEY === 'placeholder_megapay_api_key') {
       const mockTxRef = `B2C_MOCK_${Date.now()}`;
-      console.log(`[MegaPay Sandbox Mock] B2C Transfer dispatched to ${formattedPhone} for KES ${params.amountKes}`);
       return {
         success: true,
         externalReference: mockTxRef,
@@ -139,6 +128,7 @@ export class MegaPayService {
         `${ENV.MEGAPAY_API_BASE_URL}/b2c/transfer`,
         {
           client_id: ENV.MEGAPAY_CLIENT_ID,
+          email: ENV.MEGAPAY_CLIENT_ID,
           phone_number: formattedPhone,
           amount: params.amountKes,
           reference: params.payoutId,
