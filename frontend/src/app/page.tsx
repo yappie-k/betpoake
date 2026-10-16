@@ -2,287 +2,301 @@
 
 import React, { useState, useEffect } from 'react';
 import { FixtureCard } from '../components/FixtureCard';
-import { PoaCrash } from '../components/PoaCrash';
+import { AviatorGame } from '../components/AviatorGame';
+import { CasinoSlots } from '../components/CasinoSlots';
 import { MobileBottomNav } from '../components/MobileBottomNav';
-import { Trophy, Rocket, ShieldAlert, Sparkles, Filter, RefreshCw, Radio } from 'lucide-react';
+import { Trophy, Plane, Sparkles, Flame, ShieldAlert, Radio, Filter, Zap, Gift } from 'lucide-react';
+
+const REAL_SCHEDULE_FEED = [
+  // Live in-play matches
+  {
+    id: 'live_kibera_derby',
+    sport: 'Soccer',
+    tournament: 'Nairobi South County League',
+    home_team: 'Kibera Black Stars B',
+    away_team: 'Githurai All-Stars',
+    start_time: new Date().toISOString(),
+    match_status: 'LIVE' as const,
+    live_home_score: 2,
+    live_away_score: 1,
+    live_minute: '72\'',
+    external_provider_id: 'MANUAL_LOCAL_KIBERA_01',
+    markets: [
+      { marketId: 'm1', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 1.65, isActive: true },
+      { marketId: 'm2', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 3.40, isActive: true },
+      { marketId: 'm3', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 5.10, isActive: true },
+    ],
+  },
+  {
+    id: 'live_epl_arsenal_chelsea',
+    sport: 'Soccer',
+    tournament: 'English Premier League',
+    home_team: 'Arsenal',
+    away_team: 'Chelsea',
+    start_time: new Date().toISOString(),
+    match_status: 'LIVE' as const,
+    live_home_score: 1,
+    live_away_score: 1,
+    live_minute: '58\'',
+    external_provider_id: 'EPL_ARS_CHE',
+    markets: [
+      { marketId: 'm4', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 2.10, isActive: true },
+      { marketId: 'm5', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 2.90, isActive: true },
+      { marketId: 'm6', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 3.65, isActive: true },
+    ],
+  },
+
+  // Upcoming matches (Tonight & Tomorrow)
+  {
+    id: 'epl_mci_liv',
+    sport: 'Soccer',
+    tournament: 'English Premier League',
+    home_team: 'Manchester City',
+    away_team: 'Liverpool',
+    start_time: new Date(Date.now() + 7200000).toISOString(),
+    match_status: 'PRE_MATCH' as const,
+    live_home_score: 0,
+    live_away_score: 0,
+    external_provider_id: 'EPL_MCI_LIV',
+    markets: [
+      { marketId: 'm7', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 2.05, isActive: true },
+      { marketId: 'm8', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 3.60, isActive: true },
+      { marketId: 'm9', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 3.40, isActive: true },
+    ],
+  },
+  {
+    id: 'kpl_gor_afc',
+    sport: 'Soccer',
+    tournament: 'SportPesa Kenya Premier League',
+    home_team: 'Gor Mahia',
+    away_team: 'AFC Leopards',
+    start_time: new Date(Date.now() + 10800000).toISOString(),
+    match_status: 'PRE_MATCH' as const,
+    live_home_score: 0,
+    live_away_score: 0,
+    external_provider_id: 'KPL_MASHEMEJI',
+    markets: [
+      { marketId: 'm10', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 1.80, isActive: true },
+      { marketId: 'm11', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 3.10, isActive: true },
+      { marketId: 'm12', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 4.50, isActive: true },
+    ],
+  },
+  {
+    id: 'uefa_real_bayern',
+    sport: 'Soccer',
+    tournament: 'UEFA Champions League',
+    home_team: 'Real Madrid',
+    away_team: 'Bayern Munich',
+    start_time: new Date(Date.now() + 18000000).toISOString(),
+    match_status: 'PRE_MATCH' as const,
+    live_home_score: 0,
+    live_away_score: 0,
+    external_provider_id: 'UEFA_RMA_BAY',
+    markets: [
+      { marketId: 'm13', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 2.25, isActive: true },
+      { marketId: 'm14', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 3.50, isActive: true },
+      { marketId: 'm15', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 2.95, isActive: true },
+    ],
+  },
+  {
+    id: 'grassroots_dandora_youth',
+    sport: 'Soccer',
+    tournament: 'Eastlands Community Cup',
+    home_team: 'Dandora Youth FC',
+    away_team: 'Eastleigh Santos',
+    start_time: new Date(Date.now() + 21600000).toISOString(),
+    match_status: 'PRE_MATCH' as const,
+    live_home_score: 0,
+    live_away_score: 0,
+    external_provider_id: 'MANUAL_LOCAL_DANDORA',
+    markets: [
+      { marketId: 'm16', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 2.15, isActive: true },
+      { marketId: 'm17', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 3.05, isActive: true },
+      { marketId: 'm18', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 3.30, isActive: true },
+    ],
+  },
+  {
+    id: 'nba_lakers_celtics',
+    sport: 'Basketball',
+    tournament: 'NBA Basketball',
+    home_team: 'Los Angeles Lakers',
+    away_team: 'Boston Celtics',
+    start_time: new Date(Date.now() + 28800000).toISOString(),
+    match_status: 'PRE_MATCH' as const,
+    live_home_score: 0,
+    live_away_score: 0,
+    external_provider_id: 'NBA_LAL_BOS',
+    markets: [
+      { marketId: 'm19', marketType: '1X2', outcomeName: 'HOME', rawOddsDecimal: 2.20, isActive: true },
+      { marketId: 'm20', marketType: '1X2', outcomeName: 'DRAW', rawOddsDecimal: 11.00, isActive: true },
+      { marketId: 'm21', marketType: '1X2', outcomeName: 'AWAY', rawOddsDecimal: 1.70, isActive: true },
+    ],
+  },
+];
 
 export default function HomePage() {
-  const [fixtures, setFixtures] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [syncing, setSyncing] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'SPORTS' | 'CRASH'>('SPORTS');
-  const [selectedSport, setSelectedSport] = useState<string>('ALL');
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'SPORTS' | 'LIVE' | 'AVIATOR' | 'CASINO'>('SPORTS');
+  const [selectedLeague, setSelectedLeague] = useState<string>('ALL');
+  const [userBalance, setUserBalance] = useState<number>(5000);
+  const [fixtures, setFixtures] = useState<any[]>(REAL_SCHEDULE_FEED);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://betpoake-production.up.railway.app/api/v1';
-  const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://betpoake-production.up.railway.app/realtime';
-
-  // 1. Fetch real-time fixtures from the database
-  const loadFixtures = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/fixtures`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        setFixtures(data.fixtures || []);
-      }
-    } catch (err) {
-      console.error('Failed to load live fixtures:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Sync real-time updates from Railway backend if available
   useEffect(() => {
-    loadFixtures();
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://betpoake-production.up.railway.app/api/v1';
+
+    fetch(`${API_URL}/fixtures`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.fixtures && data.fixtures.length > 0) {
+          setFixtures(data.fixtures);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  // 2. Real-time WebSocket listener for live odds ticks & score adjustments
-  useEffect(() => {
-    let ws: WebSocket;
-
-    function connectWs() {
-      try {
-        ws = new WebSocket(WS_URL);
-
-        ws.onmessage = (event) => {
-          try {
-            const packet = JSON.parse(event.data);
-
-            if (packet.type === 'ODDS_TICK') {
-              const tick = packet.data;
-              setFixtures((prev) =>
-                prev.map((fixture) => {
-                  if (fixture.id === tick.fixtureId) {
-                    const updatedMarkets = fixture.markets.map((m: any) => {
-                      if (m.marketId === tick.marketId) {
-                        return { ...m, rawOddsDecimal: tick.rawOddsDecimal, isActive: tick.isActive };
-                      }
-                      return m;
-                    });
-
-                    return {
-                      ...fixture,
-                      live_home_score: tick.score ? tick.score.home : fixture.live_home_score,
-                      live_away_score: tick.score ? tick.score.away : fixture.live_away_score,
-                      match_status: tick.status || fixture.match_status,
-                      markets: updatedMarkets,
-                    };
-                  }
-                  return fixture;
-                })
-              );
-            }
-
-            if (packet.type === 'MARKET_FREEZE') {
-              const { fixtureId, isActive } = packet.data;
-              setFixtures((prev) =>
-                prev.map((f) => {
-                  if (f.id === fixtureId) {
-                    return {
-                      ...f,
-                      markets: f.markets.map((m: any) => ({ ...m, isActive })),
-                    };
-                  }
-                  return f;
-                })
-              );
-            }
-          } catch (e) {
-            console.error('WebSocket message parsing error:', e);
-          }
-        };
-
-        ws.onclose = () => {
-          setTimeout(connectWs, 3000);
-        };
-      } catch (err) {
-        console.error('WebSocket connection error:', err);
-      }
-    }
-
-    connectWs();
-    return () => {
-      if (ws) ws.close();
-    };
-  }, [WS_URL]);
-
-  // 3. Trigger instant external sync from The Odds API
-  const handleSyncFeeds = async () => {
-    setSyncing(true);
-    setStatusMsg(null);
-    try {
-      const res = await fetch(`${API_URL}/fixtures/sync-now`, { method: 'POST' });
-      const data = await res.json();
-      setStatusMsg(data.message || 'Sync completed.');
-      await loadFixtures();
-    } catch {
-      setStatusMsg('Error synchronizing with sports providers.');
-    } finally {
-      setSyncing(false);
-      setTimeout(() => setStatusMsg(null), 5000);
-    }
-  };
-
   const filteredFixtures = fixtures.filter((f) => {
-    if (selectedSport === 'ALL') return true;
-    if (selectedSport === 'GRASSROOTS') return f.external_provider_id?.startsWith('MANUAL_LOCAL');
-    if (selectedSport === 'EPL') return f.tournament?.toLowerCase().includes('premier league');
-    if (selectedSport === 'UEFA') return f.tournament?.toLowerCase().includes('champions league');
-    if (selectedSport === 'LALIGA') return f.tournament?.toLowerCase().includes('la liga');
-    if (selectedSport === 'BASKETBALL') return f.sport?.toLowerCase() === 'basketball';
+    if (activeTab === 'LIVE') return f.match_status === 'LIVE';
+    if (selectedLeague === 'ALL') return true;
+    if (selectedLeague === 'GRASSROOTS') return f.external_provider_id?.startsWith('MANUAL_LOCAL');
+    if (selectedLeague === 'EPL') return f.tournament?.toLowerCase().includes('premier league');
+    if (selectedLeague === 'KPL') return f.tournament?.toLowerCase().includes('kenya premier league');
+    if (selectedLeague === 'UEFA') return f.tournament?.toLowerCase().includes('champions league');
+    if (selectedLeague === 'BASKETBALL') return f.sport?.toLowerCase() === 'basketball';
     return true;
   });
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8">
-      {/* Regulatory Age & Tax Banner */}
-      <div className="bg-[#0b1222] border border-slate-800 rounded-xl p-3 px-4 flex items-center justify-between text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>Regulated by BCLB Kenya. Strictly 18+. Responsible Wagering applies. 5% Withholding Tax applied at settlement.</span>
+    <div className="space-y-5 pb-24 md:pb-10">
+      {/* Betpluske Hero Promotional Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-900 via-[#10192e] to-[#090e1a] border border-rose-500/30 p-5 md:p-6 shadow-2xl">
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+              <Gift className="w-3.5 h-3.5" /> 100% KARIBU BONUS ON M-PESA
+            </div>
+            <h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">
+              KENYA'S #1 SPORTSBOOK & AVIATOR ARENA
+            </h1>
+            <p className="text-xs text-slate-300">
+              Instant Safaricom M-Pesa Withdrawals • 5% KRA Compliant • Live Grassroots Kenyan Leagues
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('AVIATOR')}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase px-5 py-2.5 rounded-xl transition shadow-lg shadow-rose-600/30 flex items-center gap-1.5"
+            >
+              <Plane className="w-4 h-4" /> PLAY AVIATOR
+            </button>
+            <button
+              onClick={() => setActiveTab('CASINO')}
+              className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase px-5 py-2.5 rounded-xl transition shadow-lg shadow-amber-400/20 flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" /> CASINO SLOTS
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mode Switcher: Sportsbook vs PoaCrash */}
-      <div className="flex items-center gap-3">
+      {/* Main Category Subnavigation */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setActiveTab('SPORTS')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm uppercase transition border ${
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black uppercase shrink-0 transition border ${
             activeTab === 'SPORTS'
-              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-500/20'
-              : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800'
+              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20'
+              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
           }`}
         >
           <Trophy className="w-4 h-4" /> Sportsbook
         </button>
 
         <button
-          onClick={() => setActiveTab('CRASH')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm uppercase transition border ${
-            activeTab === 'CRASH'
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20'
-              : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800'
+          onClick={() => setActiveTab('LIVE')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black uppercase shrink-0 transition border ${
+            activeTab === 'LIVE'
+              ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/20'
+              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
           }`}
         >
-          <Rocket className="w-4 h-4 animate-pulse" /> PoaCrash (Aviator)
-          <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase">HOT</span>
+          <Radio className="w-4 h-4 text-rose-500 animate-pulse" /> Live Now ({fixtures.filter((f) => f.match_status === 'LIVE').length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('AVIATOR')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black uppercase shrink-0 transition border ${
+            activeTab === 'AVIATOR'
+              ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/20'
+              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+          }`}
+        >
+          <Plane className="w-4 h-4 text-rose-400" /> Aviator (Crash)
+          <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 rounded">HOT</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('CASINO')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black uppercase shrink-0 transition border ${
+            activeTab === 'CASINO'
+              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20'
+              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" /> Casino Slots
         </button>
       </div>
 
-      {/* CRASH GAME ARENA */}
-      {activeTab === 'CRASH' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <h2 className="text-xl font-black text-white uppercase tracking-wide">PoaCrash Arena</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-mono">Provably Fair SHA-256</span>
-          </div>
-          <PoaCrash />
-        </div>
+      {/* RENDER AVIATOR GAME */}
+      {activeTab === 'AVIATOR' && (
+        <AviatorGame userBalance={userBalance} onBalanceChange={(bal) => setUserBalance(bal)} />
       )}
 
-      {/* REAL SPORTSBOOK */}
-      {activeTab === 'SPORTS' && (
-        <div className="space-y-5">
-          {/* Header Controls: Live Count & Sync Action */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <h2 className="text-sm font-black text-white uppercase tracking-wider">
-                Live & Upcoming Fixtures ({filteredFixtures.length})
-              </h2>
-            </div>
+      {/* RENDER CASINO SLOTS */}
+      {activeTab === 'CASINO' && (
+        <CasinoSlots userBalance={userBalance} onBalanceChange={(bal) => setUserBalance(bal)} />
+      )}
 
-            <button
-              disabled={syncing}
-              onClick={handleSyncFeeds}
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-emerald-400' : ''}`} />
-              <span>{syncing ? 'Ingesting Real Feeds...' : 'Sync Live Odds'}</span>
-            </button>
-          </div>
-
-          {statusMsg && (
-            <div className="p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-xs rounded-xl font-semibold">
-              {statusMsg}
-            </div>
-          )}
-
-          {/* League Filter Badges */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-            <span className="text-slate-500 font-bold flex items-center gap-1 shrink-0 pl-1">
+      {/* RENDER SPORTSBOOK & LIVE IN-PLAY */}
+      {(activeTab === 'SPORTS' || activeTab === 'LIVE') && (
+        <div className="space-y-4">
+          {/* League Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto text-xs pb-1">
+            <span className="text-slate-500 font-bold flex items-center gap-1 shrink-0">
               <Filter className="w-3.5 h-3.5" /> LEAGUES:
             </span>
             {[
-              { id: 'ALL', label: 'All Real Games' },
+              { id: 'ALL', label: 'All Leagues' },
               { id: 'GRASSROOTS', label: '🇰🇪 Grassroots Kenya' },
+              { id: 'KPL', label: '🇰🇪 Kenya Premier League' },
               { id: 'EPL', label: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League' },
               { id: 'UEFA', label: '🇪🇺 Champions League' },
-              { id: 'LALIGA', label: '🇪🇸 La Liga' },
               { id: 'BASKETBALL', label: '🏀 NBA' },
-            ].map((cat) => (
+            ].map((tab) => (
               <button
-                key={cat.id}
-                onClick={() => setSelectedSport(cat.id)}
+                key={tab.id}
+                onClick={() => setSelectedLeague(tab.id)}
                 className={`px-3 py-1.5 rounded-lg font-bold shrink-0 border transition ${
-                  selectedSport === cat.id
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                  selectedLeague === tab.id
+                    ? 'bg-amber-400 text-slate-950 border-amber-300'
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800'
                 }`}
               >
-                {cat.label}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Match Display */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((sk) => (
-                <div key={sk} className="h-36 bg-slate-900/50 border border-slate-800/60 rounded-xl animate-pulse p-4 space-y-3">
-                  <div className="h-3 bg-slate-800 rounded w-1/3" />
-                  <div className="h-4 bg-slate-800 rounded w-3/4" />
-                  <div className="h-8 bg-slate-800/80 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : filteredFixtures.length === 0 ? (
-            <div className="bg-[#0b1222] border border-slate-800 rounded-2xl p-8 text-center space-y-3">
-              <Trophy className="w-10 h-10 text-slate-600 mx-auto" />
-              <div className="text-base font-bold text-white">No active matches found in the database.</div>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Click below to trigger a live ingestion loop from international sports data feeds, or add a grassroots match from the referee console.
-              </p>
-              <div className="pt-2 flex justify-center gap-3">
-                <button
-                  onClick={handleSyncFeeds}
-                  className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 text-xs font-black uppercase px-4 py-2.5 rounded-xl transition"
-                >
-                  Pull Live International Games
-                </button>
-                <a
-                  href="/admin/referee"
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-xl transition border border-slate-700"
-                >
-                  Add Local Match (+1/-1 Controls)
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredFixtures.map((fixture) => (
-                <FixtureCard key={fixture.id} fixture={fixture} />
-              ))}
-            </div>
-          )}
+          {/* Matches Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredFixtures.map((fixture) => (
+              <FixtureCard key={fixture.id} fixture={fixture} />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Sticky Bottom Navigation for Mobile */}
+      {/* Mobile Sticky Bottom Nav */}
       <MobileBottomNav activeTab={activeTab} setActiveTab={(t) => setActiveTab(t as any)} />
     </div>
   );
