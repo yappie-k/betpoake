@@ -2,14 +2,12 @@
 
 WORKDIR /app
 
-# Copy package definitions
-COPY backend/package*.json ./
-
-# Install ALL packages (including TypeScript) even if NODE_ENV=production
+# Install dependencies relative to /backend context
+COPY package*.json ./
 RUN npm install --include=dev
 
-# Copy backend source code and compile
-COPY backend/ ./
+# Copy source code relative to /backend context and compile
+COPY . ./
 RUN npm run build
 
 EXPOSE 5000
