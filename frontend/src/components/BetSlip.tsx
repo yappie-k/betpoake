@@ -1,13 +1,16 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
+import { useAuth } from '../context/AuthContext';
 import { placeBet } from '../lib/api';
-import { X, Trash2, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, ShieldAlert, CheckCircle2, Receipt, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function BetSlip() {
   const { selections, removeSelection, clearSlip, stake, setStake, totalOdds, isSlipOpen, setIsSlipOpen } = useBetSlip();
+  const { user, token, openAuthModal, updateBalance } = useAuth();
+  
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -16,18 +19,28 @@ export function BetSlip() {
 
   const grossPayout = stake * totalOdds;
   const netWin = grossPayout > stake ? grossPayout - stake : 0;
-  // Regulatory 5% Withholding Tax Deduction
+  // 5% KRA Withholding Tax
   const taxDeduction = netWin * 0.05;
   const netDisbursement = grossPayout - taxDeduction;
 
   const hasLockedOdds = selections.some((s) => s.isLocked);
 
   const handlePlaceBet = async () => {
+    // 1. Force Authentication
+    if (!user || !token) {
+      openAuthModal('LOGIN');
+      return;
+    }
+
+    // 2. Check Balance
+    if (user.balanceKes < stake) {
+      setErrorMsg(`Insufficient funds (Balance: KES ${user.balanceKes.toFixed(2)}). Please deposit via M-Pesa.`);
+      return;
+    }
+
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
-
-    const token = localStorage.getItem('betpoake_token') || 'SAMPLE_TOKEN_IF_AUTHENTICATED';
 
     try {
       const legs = selections.map((s) => ({ marketId: s.marketId, outcomeName: s.outcomeName }));
@@ -36,26 +49,28 @@ export function BetSlip() {
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        setSuccessMsg(`Wager placed successfully! Ticket ID: ${res.betTicket.betId.slice(0, 8)}`);
+        updateBalance(user.balanceKes - stake);
+        setSuccessMsg(`Bet Placed! Potential Net Payout: KES ${netDisbursement.toFixed(2)}`);
         setTimeout(() => {
           clearSlip();
           setIsSlipOpen(false);
           setSuccessMsg(null);
         }, 3000);
       }
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Error processing wager.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Wager failed to record.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <aside className="fixed bottom-0 right-0 w-full md:w-96 max-h-[85vh] bg-[#0c1220] border-t md:border-l border-slate-800 z-50 flex flex-col shadow-2xl rounded-t-2xl md:rounded-tl-2xl overflow-hidden">
+    <aside className="fixed bottom-0 right-0 w-full md:w-96 max-h-[90vh] bg-[#0c1220] border-t md:border-l border-slate-800 z-50 flex flex-col shadow-2xl rounded-t-2xl md:rounded-tl-2xl overflow-hidden">
       <div className="bg-[#10182b] px-4 py-3 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          <Receipt className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-black tracking-wide text-white">BETSLIP</span>
-          <span className="bg-emerald-500 text-slate-950 font-bold text-xs px-1.5 py-0.2 rounded-full">
+          <span className="bg-amber-400 text-slate-950 font-bold text-xs px-2 py-0.2 rounded-full">
             {selections.length}
           </span>
         </div>
@@ -75,7 +90,7 @@ export function BetSlip() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {selections.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-xs font-semibold">
-            Your slip is empty. Click odds to construct a single or multi-leg wager.
+            Your slip is empty. Click any odds (1, X, 2) on the games to build your ticket.
           </div>
         ) : (
           selections.map((sel) => (
@@ -83,11 +98,7 @@ export function BetSlip() {
               key={sel.marketId}
               className={cn(
                 'p-3 rounded-lg border text-xs relative transition',
-                sel.oddsDirection === 'up' && 'flash-green',
-                sel.oddsDirection === 'down' && 'flash-red',
-                sel.isLocked
-                  ? 'bg-red-950/20 border-red-800/40 text-slate-400'
-                  : 'bg-slate-900 border-slate-800 text-slate-200'
+                sel.isLocked ? 'bg-red-950/20 border-red-800/40 text-slate-400' : 'bg-slate-900 border-slate-800 text-slate-200'
               )}
             >
               <div className="flex justify-between items-start mb-1">
@@ -98,7 +109,7 @@ export function BetSlip() {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="font-bold text-emerald-400 uppercase">{sel.outcomeName}</span>
+                <span className="font-bold text-amber-400 uppercase">PICK: {sel.outcomeName}</span>
                 <span className="font-mono font-black text-sm text-white">
                   {sel.isLocked ? <span className="text-red-500 text-[10px]">ODDS LOCKED</span> : sel.odds.toFixed(2)}
                 </span>
@@ -112,28 +123,42 @@ export function BetSlip() {
         <div className="p-4 bg-[#0a0f1c] border-t border-slate-800 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400 font-bold">TOTAL ODDS</span>
-            <span className="font-mono font-black text-emerald-400 text-base">{totalOdds}</span>
+            <span className="font-mono font-black text-amber-400 text-base">{totalOdds}</span>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-400 uppercase">Stake Amount (KES)</label>
+          {/* Quick Stake Chips */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase">
+              <span>Stake (KES)</span>
+              <div className="flex gap-1">
+                {[50, 100, 200, 500].map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => setStake(chip)}
+                    className="bg-slate-800 hover:bg-slate-700 text-[10px] font-bold px-2 py-0.5 rounded text-slate-300"
+                  >
+                    +{chip}
+                  </button>
+                ))}
+              </div>
+            </div>
             <input
               type="number"
               min="10"
               value={stake}
               onChange={(e) => setStake(Math.max(0, Number(e.target.value)))}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-400"
             />
           </div>
 
-          {/* Regulatory Tax Transparency Accordion */}
+          {/* KRA 5% Tax Calculation */}
           <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80 text-[11px] space-y-1">
             <div className="flex justify-between text-slate-400">
               <span>Gross Return</span>
               <span className="font-mono text-slate-200">KES {grossPayout.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-amber-400/90 font-medium">
-              <span>KRA WHT Tax (5% on Net)</span>
+              <span>KRA WHT (5% on Net Win)</span>
               <span className="font-mono">- KES {taxDeduction.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-emerald-400 font-bold text-xs pt-1 border-t border-slate-800">
@@ -160,13 +185,23 @@ export function BetSlip() {
             disabled={loading || hasLockedOdds || stake <= 0}
             onClick={handlePlaceBet}
             className={cn(
-              'w-full py-3 rounded-lg font-black text-xs uppercase tracking-wider transition',
-              hasLockedOdds
+              'w-full py-3 rounded-lg font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5',
+              !user
+                ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-lg'
+                : hasLockedOdds
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 shadow-lg shadow-emerald-500/20'
+                : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-emerald-500/20'
             )}
           >
-            {loading ? 'Transacting...' : hasLockedOdds ? 'Odds Frozen - Awaiting Ticks' : 'Place Bet'}
+            {!user ? (
+              <>
+                <Lock className="w-3.5 h-3.5" /> LOGIN TO PLACE BET
+              </>
+            ) : loading ? (
+              'Processing...'
+            ) : (
+              `Place Bet (KES ${stake})`
+            )}
           </button>
         </div>
       )}

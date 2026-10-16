@@ -2,17 +2,27 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Wallet, ShieldCheck, Flame, Plus, Plane, Sparkles } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { DepositModal } from './DepositModal';
+import { Wallet, Plus, User, LogOut, Flame } from 'lucide-react';
 
 export function Navbar() {
+  const { user, openAuthModal, logout } = useAuth();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [balance] = useState(500000); // KES 5,000.00 micro-units
+
+  const handleDepositClick = () => {
+    if (!user) {
+      openAuthModal('LOGIN');
+    } else {
+      setIsDepositOpen(true);
+    }
+  };
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-[#090e1a] border-b border-slate-800/80 px-4 lg:px-8 py-2.5">
+      <header className="sticky top-0 z-40 bg-[#070b14] border-b border-slate-800/80 px-4 lg:px-8 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Logo */}
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-1.5">
               <span className="text-2xl font-black italic tracking-tighter text-white">
@@ -27,38 +37,69 @@ export function Navbar() {
               <Link href="/" className="hover:text-amber-400 transition flex items-center gap-1 text-amber-400">
                 <Flame className="w-3.5 h-3.5" /> Sports
               </Link>
-              <Link href="/" className="hover:text-rose-400 transition flex items-center gap-1">
-                <Plane className="w-3.5 h-3.5 text-rose-500" /> Aviator
-              </Link>
-              <Link href="/" className="hover:text-amber-400 transition flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Casino
-              </Link>
               <Link href="/admin/referee" className="hover:text-emerald-400 transition flex items-center gap-1 text-slate-400">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Grassroots Console
+                Referee Console
               </Link>
             </nav>
           </div>
 
+          {/* Balance & Actions */}
           <div className="flex items-center gap-2.5">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-xl px-3 py-1.5 flex items-center gap-2">
-              <Wallet className="w-3.5 h-3.5 text-amber-400" />
-              <div className="flex flex-col">
-                <span className="text-[9px] text-slate-400 font-extrabold leading-none">M-PESA WALLET</span>
-                <span className="text-xs font-black text-white font-mono leading-tight">KES {(balance / 100).toFixed(2)}</span>
-              </div>
-            </div>
+            {user ? (
+              <>
+                <div className="bg-[#0f172a] border border-slate-800 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-slate-400 font-extrabold leading-none">WALLET</span>
+                    <span className="text-xs font-black text-white font-mono leading-tight">
+                      KES {user.balanceKes.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
 
-            <button
-              onClick={() => setIsDepositOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-black text-xs uppercase px-3.5 py-2 rounded-xl flex items-center gap-1 transition shadow-lg shadow-emerald-500/20"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" /> DEPOSIT
-            </button>
+                <button
+                  onClick={handleDepositClick}
+                  className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-black text-xs uppercase px-3.5 py-2 rounded-xl flex items-center gap-1 transition shadow-lg shadow-emerald-500/20"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" /> DEPOSIT
+                </button>
+
+                <button
+                  onClick={logout}
+                  title="Logout"
+                  className="text-slate-400 hover:text-red-400 p-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex bg-[#0f172a] border border-slate-800 rounded-xl px-3 py-1.5 flex-col">
+                  <span className="text-[9px] text-slate-500 font-extrabold leading-none">BALANCE</span>
+                  <span className="text-xs font-black text-slate-400 font-mono leading-tight">KES 0.00</span>
+                </div>
+
+                <button
+                  onClick={() => openAuthModal('LOGIN')}
+                  className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase px-3 py-2 rounded-xl transition border border-slate-700"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => openAuthModal('REGISTER')}
+                  className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase px-3.5 py-2 rounded-xl transition shadow-lg shadow-amber-400/20"
+                >
+                  Register (18+)
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
+      {user && (
+        <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
+      )}
     </>
   );
 }
