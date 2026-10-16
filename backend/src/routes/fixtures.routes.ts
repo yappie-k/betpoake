@@ -3,7 +3,7 @@ import { dbPool } from '../db/connection.js';
 import { IngestionService } from '../services/ingestion.service.js';
 
 export async function fixturesRoutes(server: FastifyInstance) {
-  // GET /api/v1/fixtures — Fetch Real Matches from Database
+  // GET /api/v1/fixtures — Fetch 100% Real Matches from PostgreSQL Database
   server.get('/', async (request, reply) => {
     const query = `
       SELECT 
@@ -32,7 +32,7 @@ export async function fixturesRoutes(server: FastifyInstance) {
     return reply.send({ fixtures: res.rows });
   });
 
-  // POST /api/v1/fixtures/sync-now — Force instant sync from The Odds API
+  // POST /api/v1/fixtures/sync-now — Pull Real Live Odds from The Odds API
   server.post('/sync-now', async (request, reply) => {
     try {
       const result = await IngestionService.syncGlobalFixtures();

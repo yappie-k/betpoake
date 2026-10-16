@@ -5,49 +5,52 @@ import { ENV } from '../config/env.js';
 import { RealtimeService } from './realtime.service.js';
 
 export class IngestionService {
-  private static readonly ACTIVE_SPORTS = [
-    { key: 'soccer_epl', name: 'English Premier League', sport: 'Soccer' },
-    { key: 'soccer_uefa_champs_league', name: 'UEFA Champions League', sport: 'Soccer' },
-    { key: 'soccer_spain_la_liga', name: 'La Liga Spain', sport: 'Soccer' },
-    { key: 'basketball_nba', name: 'NBA Basketball', sport: 'Basketball' },
-  ];
-
   public static startAutomatedEngine() {
-    // Poll international live schedules every 10 minutes
+    // 1. Poll international sports every 10 minutes
     cron.schedule('*/10 * * * *', async () => {
-      console.log('[Ingestion Worker] Running scheduled global odds sync...');
+      console.log('[Ingestion Worker] Running live global odds sync...');
       await this.syncGlobalFixtures();
     });
 
-    // Also trigger initial sync 5 seconds after server boot
+    // 2. Initial sync 5s after startup
     setTimeout(() => {
       this.syncGlobalFixtures();
     }, 5000);
   }
 
   public static async syncGlobalFixtures(): Promise<{ synced: number; message: string }> {
-    if (!ENV.THE_ODDS_API_KEY || ENV.THE_ODDS_API_KEY === 'placeholder_sports_api_key' || ENV.THE_ODDS_API_KEY.includes('PASTE_')) {
-      console.warn('[Ingestion Worker] Valid THE_ODDS_API_KEY not configured. Skipping external fetch.');
-      return { synced: 0, message: 'Missing valid THE_ODDS_API_KEY in environment' };
+    const apiKey = ENV.THE_ODDS_API_KEY;
+
+    if (!apiKey || apiKey === 'placeholder_sports_api_key' || apiKey.includes('PASTE_')) {
+      return {
+        synced: 0,
+        message: 'No valid THE_ODDS_API_KEY found in environment. Please add your key to Railway.',
+      };
     }
 
     let totalSynced = 0;
 
-    for (const sportConfig of this.ACTIVE_SPORTS) {
+    // Endpoints for real upcoming matches
+    const endpoints = [
+      `${ENV.THE_ODDS_API_BASE_URL}/v4/sports/upcoming/odds/?apiKey=${apiKey}&regions=eu&markets=h2h`,
+      `${ENV.THE_ODDS_API_BASE_URL}/v4/sports/soccer_epl/odds/?apiKey=${apiKey}&regions=eu&markets=h2h`,
+      `${ENV.THE_ODDS_API_BASE_URL}/v4/sports/basketball_nba/odds/?apiKey=${apiKey}&regions=eu&markets=h2h`,
+    ];
+
+    for (const url of endpoints) {
       try {
-        const url = `${ENV.THE_ODDS_API_BASE_URL}/v4/sports/${sportConfig.key}/odds/?apiKey=${ENV.THE_ODDS_API_KEY}&regions=eu&markets=h2h`;
-        const response = await axios.get(url, { timeout: 12000 });
+        const response = await axios.get(url, { timeout: 15000 });
         const games = response.data;
 
         if (!Array.isArray(games)) continue;
 
         for (const game of games) {
-          // Skip games that have already started
           const commenceTime = new Date(game.commence_time);
-          if (commenceTime.getTime() < Date.now() - 3600000) continue;
+          // Only pull games commencing in the future or currently live
+          if (commenceTime.getTime() < Date.now() - 7200000) continue;
 
           await withTransaction(async (client) => {
-            // 1. Upsert Real Fixture
+            // Upsert real fixture
             const fixtureRes = await client.query(
               `INSERT INTO fixtures 
                 (external_provider_id, sport, tournament, home_team, away_team, start_time, match_status)
@@ -55,7 +58,14 @@ export class IngestionService {
                ON CONFLICT (external_provider_id) DO UPDATE 
                SET start_time = EXCLUDED.start_time, updated_at = NOW()
                RETURNING id;`,
-              [game.id, sportConfig.sport, sportConfig.name, game.home_team, game.away_team, game.commence_time]
+              [
+                game.id,
+                game.sport_title || 'Soccer',
+                game.sport_title || 'Live League',
+                game.home_team,
+                game.away_team,
+                game.commence_time,
+              ]
             );
 
             const fixtureId = fixtureRes.rows[0].id;
@@ -71,7 +81,7 @@ export class IngestionService {
                 const rawOdds = parseFloat(outcome.price);
                 if (isNaN(rawOdds) || rawOdds < 1.01) continue;
 
-                // 2. Upsert Moving Market Odds
+                // Upsert real bookmaker decimal odds
                 const mRes = await client.query(
                   `INSERT INTO markets (fixture_id, market_type, outcome_name, raw_odds_decimal, is_active)
                    VALUES ($1, '1X2', $2, $3, TRUE)
@@ -81,7 +91,7 @@ export class IngestionService {
                   [fixtureId, outcomeType, rawOdds]
                 );
 
-                // 3. Broadcast sub-15ms WebSocket tick down to user devices
+                // Broadcast real-time odds tick to connected devices
                 await RealtimeService.broadcastOddsTick({
                   fixtureId,
                   marketId: mRes.rows[0].id,
@@ -96,10 +106,13 @@ export class IngestionService {
           totalSynced++;
         }
       } catch (err: any) {
-        console.error(`[Ingestion Error] Failed fetching ${sportConfig.name}:`, err.response?.data?.message || err.message);
+        console.error('[Live Sports Fetch Error]:', err.response?.data?.message || err.message);
       }
     }
 
-    return { synced: totalSynced, message: `Successfully synchronized ${totalSynced} live international matches.` };
+    return {
+      synced: totalSynced,
+      message: `Synchronized ${totalSynced} real fixtures from The Odds API.`,
+    };
   }
 }
