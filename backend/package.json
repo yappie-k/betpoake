@@ -1,6 +1,7 @@
-{
+﻿{
   "name": "betpoake-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Enterprise Betting Engine for BetPoake Kenya",
   "main": "dist/server.js",
   "scripts": {

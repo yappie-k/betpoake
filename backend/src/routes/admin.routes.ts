@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+﻿import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { dbPool, withTransaction } from '../db/connection.js';
 import { RealtimeService } from '../services/realtime.service.js';
@@ -100,7 +100,7 @@ export async function adminRoutes(server: FastifyInstance) {
 
     // If match was toggled to COMPLETED, fire automated tax and bet settlement engine
     if (status === 'COMPLETED') {
-      await SettlementService.settCompletedFixture(params.id, homeScore, awayScore);
+      await SettlementService.settleCompletedFixture(params.id, homeScore, awayScore);
     }
 
     return reply.send({ success: true });

@@ -1,15 +1,25 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import { dbPool, withTransaction } from './connection.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function getMigrationsSql(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'src/db/migrations.sql'),
+    path.resolve(process.cwd(), 'backend/src/db/migrations.sql'),
+    path.resolve(process.cwd(), 'dist/db/migrations.sql')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      return fs.readFileSync(c, 'utf-8');
+    }
+  }
+  throw new Error(`migrations.sql not found in candidate paths: ${candidates.join(', ')}`);
+}
 
 async function runSeed() {
   console.log('Running BetPoake Database Migrations & Initial Ledgers...');
-  const migrationSql = fs.readFileSync(path.join(__dirname, 'migrations.sql'), 'utf-8');
+  const migrationSql = getMigrationsSql();
 
   await dbPool.query(migrationSql);
   console.log('Postgres Schema Verified and Applied.');
