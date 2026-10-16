@@ -2,16 +2,15 @@
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
+# Install backend dependencies
+COPY backend/package*.json ./
 RUN npm install
 
-# Copy source code and build TypeScript
-COPY . .
+# Copy source code and build
+COPY backend/ ./
 RUN npm run build
 
-# Expose Fastify port
 EXPOSE 5000
 
-# Run ledger migrations and start the server
+# Run migrations and launch Fastify
 CMD ["sh", "-c", "npm run db:migrate && npm start"]
